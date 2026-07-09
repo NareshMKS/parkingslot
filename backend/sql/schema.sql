@@ -1,11 +1,11 @@
 CREATE TABLE tickets (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   ticket_id VARCHAR(20) UNIQUE NOT NULL,
   vehicle_number VARCHAR(20) NOT NULL,
-  vehicle_type ENUM('bike','car','truck') NOT NULL,
-  entry_time DATETIME NOT NULL,
-  exit_time DATETIME DEFAULT NULL,
+  vehicle_type VARCHAR(10) NOT NULL CHECK (vehicle_type IN ('bike','car','truck')),
+  entry_time TIMESTAMP NOT NULL,
+  exit_time TIMESTAMP DEFAULT NULL,
   amount DECIMAL(6,2) DEFAULT NULL,
-  status ENUM('parked','exited') DEFAULT 'parked',
+  status VARCHAR(10) DEFAULT 'parked' CHECK (status IN ('parked','exited')),
   slot_number VARCHAR(10) DEFAULT NULL
 );

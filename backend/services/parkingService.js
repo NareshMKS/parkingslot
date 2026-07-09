@@ -15,7 +15,7 @@ class ParkingService {
 
     const occupiedMap = {};
     rows.forEach(row => {
-      occupiedMap[row.vehicle_type] = row.occupied;
+      occupiedMap[row.vehicle_type] = parseInt(row.occupied, 10);
     });
 
     return {
@@ -27,7 +27,7 @@ class ParkingService {
 
   async getParkedVehicles() {
     const [rows] = await db.query(`
-      SELECT ticket_id AS ticketId, vehicle_number AS vehicleNumber, vehicle_type AS vehicleType, entry_time AS entryTime, slot_number AS slotNumber
+      SELECT ticket_id AS "ticketId", vehicle_number AS "vehicleNumber", vehicle_type AS "vehicleType", entry_time AS "entryTime", slot_number AS "slotNumber"
       FROM tickets 
       WHERE status = 'parked'
       ORDER BY entry_time DESC
@@ -37,7 +37,7 @@ class ParkingService {
 
   async parkVehicle({ vehicleNumber, vehicleType }) {
     // Check if duplicate
-    const [existing] = await db.query(`SELECT id FROM tickets WHERE vehicle_number = ? AND status = 'parked'`, [vehicleNumber]);
+    const [existing] = await db.query(`SELECT id FROM tickets WHERE vehicle_number = $1 AND status = 'parked'`, [vehicleNumber]);
     if (existing.length > 0) {
       const error = new Error('Already Parked');
       error.statusCode = 400;
@@ -45,8 +45,8 @@ class ParkingService {
     }
 
     // Check availability
-    const [countRows] = await db.query(`SELECT COUNT(*) AS occupied FROM tickets WHERE vehicle_type = ? AND status = 'parked'`, [vehicleType]);
-    const occupied = countRows[0].occupied;
+    const [countRows] = await db.query(`SELECT COUNT(*) AS occupied FROM tickets WHERE vehicle_type = $1 AND status = 'parked'`, [vehicleType]);
+    const occupied = parseInt(countRows[0].occupied, 10);
 
     if (occupied >= LIMITS[vehicleType]) {
       const error = new Error('Parking Full');
@@ -66,7 +66,7 @@ class ParkingService {
 
     await db.query(`
       INSERT INTO tickets (ticket_id, vehicle_number, vehicle_type, entry_time, status, slot_number)
-      VALUES (?, ?, ?, ?, 'parked', ?)
+      VALUES ($1, $2, $3, $4, 'parked', $5)
     `, [ticketId, vehicleNumber, vehicleType, entryTime, slotNumber]);
 
     return {
@@ -80,7 +80,7 @@ class ParkingService {
 
   async exitVehicle({ identifier, isTicketId }) {
     const queryField = isTicketId ? 'ticket_id' : 'vehicle_number';
-    const [tickets] = await db.query(`SELECT * FROM tickets WHERE ${queryField} = ? AND status = 'parked'`, [identifier]);
+    const [tickets] = await db.query(`SELECT * FROM tickets WHERE ${queryField} = $1 AND status = 'parked'`, [identifier]);
 
     if (tickets.length === 0) {
       const error = new Error('Ticket not found or already exited');
@@ -98,8 +98,8 @@ class ParkingService {
 
     await db.query(`
       UPDATE tickets 
-      SET exit_time = ?, amount = ?, status = 'exited', slot_number = NULL
-      WHERE id = ?
+      SET exit_time = $1, amount = $2, status = 'exited', slot_number = NULL
+      WHERE id = $3
     `, [exitTime, amount, ticket.id]);
 
     return {
@@ -114,3 +114,4 @@ class ParkingService {
 }
 
 module.exports = new ParkingService();
+
